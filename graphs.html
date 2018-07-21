@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width, maximum-scale=1">
+    <link href="https://fonts.googleapis.com/css?family=Encode+Sans+Semi+Condensed" rel="stylesheet">
+    <style>
+      body {
+        padding:0;
+        margin:0;
+        background-image:url('background.jpg');
+        background-repeat: no-repeat;
+        background-size: cover;}
+      div#menu {
+        padding:30px; 
+        background:rgba(0,0,0,0.5);
+        border-radius:6px;
+        border:solid 1px lightblue;
+        box-shadow:inset 0 0 20px gray;
+        position:absolute;
+        width:40%;
+        top:0;
+        left:0;
+        margin-top:10%;
+        z-index:1;
+        color:#fff;
+        font-family:'Encode Sans Semi Condensed', sans-serif; 
+        text-align:center;}
+      input {
+        border-radius:6px; 
+        padding:6px; 
+        border:0; 
+        margin:6px;
+        font-family:'Encode Sans Semi Condensed', sans-serif;
+        font-weight:bolder;
+        text-align:center;}
+      div#time {
+        padding-top: 15px;
+        padding-bottom: 15px;
+        padding-left: 30px;
+        background: rgba(0,0,0,0.5);
+        border-radius: 6px;
+        border: solid 1px lightblue;
+        box-shadow: inset 0 0 20px gray;
+        position: absolute;
+        width: 150px;
+        left: 0;
+        bottom: 0;
+        margin: 6px;
+        color: #fff;
+        font-family: 'Encode Sans Semi Condensed', sans-serif;}
+      @media screen and (max-width:1024px) {
+        body {
+          background-size: 100vw 100vh;
+        }
+      }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/velocity/1.5.0/velocity.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/velocity/1.5.0/velocity.ui.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.5/angular.js"></script>
+  </head>
+  <body ng-app>
+    <div id="menu">
+      <label>Enter number of nodes:</label>
+      <input onblur="init();" type="text" value="0">
+      <button style="padding:5px 15px;border-radius:6px; border:0;" ng-bind="'Start'"></button>
+    </div>
+
+    <div id="time">
+      Time: <span id="h">00</span> : <span id="m">00</span> : <span id="s">00</span>
+    </div>
+
+    <script>
+      function init() {
+        console.log('Begin Game.');
+
+        var input = parseInt(document.querySelector('input').value);
+        nodes = [];
+        
+        for(var i = 0; i < input; i++) {
+          nodes.push(new Node());
+        }
+
+        canvas = document.createElement('canvas');
+        canvas.width = innerWidth;
+        canvas.height = innerHeight;
+        canvas.style.opacity = 0.7;
+        canvas.style.position = 'fixed';
+        canvas.style.top = 0;
+        canvas.style.left = 0;
+        canvas.style.zIndex = -1;
+        document.body.append(canvas);
+
+        ctx = canvas.getContext('2d');
+        ctx.fillStyle = "#C692B2";
+        ctx.strokeStyle = "#C692B2";
+
+        canvas.addEventListener('click', function() {
+          var pos = { x: event.pageX, y: event.pageY }
+          explode(pos);
+
+          // Loop through the array only if the clicked spot has pixel data
+          // This prevents unecessary loops from happening
+          if(ctx.getImageData(pos.x, pos.y, 1, 1).data[0] != 0) {
+            nodes.forEach(function(el,index) {
+              var node = {
+                x0: el.x - 5, x1: el.x + 5,
+                y0: el.y - 5, y1: el.y + 5
+              };
+
+              if(pos.x > node.x0 && pos.x < node.x1 && pos.y > node.y0 && pos.y < node.y1) {
+                nodes.splice(index,1);
+                return;
+              }
+            });
+          }
+        }, false);
+        
+        document.querySelector('div').style.display = 'none';
+        animation = setInterval(drawNodes, 1000/25);
+        startGameClock();
+      }
+
+      
+      function Node() {
+        this.x = getRandomX();
+        this.y = getRandomY();
+        this.direction = [];
+
+        if(getRandomInt(1)) {
+          this.direction[0] = 1;
+        } else {
+          this.direction[0] = -1;
+        }
+
+        if(getRandomInt(1)) {
+          this.direction[1] = 1;
+        } else {
+          this.direction[1] = -1;
+        }
+      }
+
+
+      function drawNodes() {
+        if(nodes.length == 0) {
+          clearInterval(animation);
+          clearInterval(gameClock);
+          ctx.clearRect(0,0,innerWidth,innerHeight);
+          console.log('Game Over');
+          return;
+        }
+
+        ctx.clearRect(0,0,innerWidth,innerHeight);
+        nodes.forEach(function(el) {
+          checkNodeIsOutOfBounds(el);
+          moveNode(el);
+          ctx.moveTo(el.x, el.y);
+          ctx.beginPath();
+          ctx.arc(el.x, el.y, 10, 0, Math.PI * 2);
+          ctx.closePath();
+          ctx.fill();
+        });
+
+        drawEdges();
+      }
+
+
+      function moveNode(node) {
+        if(node.direction[0] == 1) {
+          node.x += 1;
+        }
+
+        if(node.direction[1] == 1) {
+          node.y += 1;
+        }
+
+        if(node.direction[0] == -1) {
+          node.x -= 1;
+        }
+
+        if(node.direction[1] == -1) {
+          node.y -= 1;
+        }
+      }
+
+      function checkNodeIsOutOfBounds(node) {
+        if(node.x == innerWidth || node.x == 0) {
+          node.direction[0] *= -1;
+        }
+
+        if(node.y == innerHeight || node.y == 0) {
+          node.direction[1] *= -1;
+        }
+      }
+
+      function drawEdges() {
+        ctx.beginPath();
+        ctx.moveTo(nodes[0].x, nodes[0].y);
+
+        nodes.forEach(function(el) {
+          ctx.lineTo(el.x, el.y);
+        });
+
+        ctx.closePath();
+        ctx.stroke();
+      }
+
+      function getRandomInt(n) {
+        var min = 0;
+        var max = n + 1;
+        return Math.floor(Math.random() * (max - min)) + min;
+      }
+
+      function getRandomX() {
+        var min = 0;
+        var max = innerWidth;
+        return Math.floor(Math.random() * (max - min)) + min;
+      }
+
+      function getRandomY() {
+        var min = 0;
+        var max = innerHeight;
+        return Math.floor(Math.random() * (max - min)) + min;
+      }
+
+      function explode(p) {
+        var c = document.createElement('canvas');
+        document.body.append(c);
+        c.width = 20;
+        c.height = 20;
+        c.style.position = 'absolute';
+        c.style.zIndex = -2;
+        c.style.top = p.y -10 + 'px';
+        c.style.left = p.x -10 + 'px';
+
+        var cx = c.getContext('2d');
+        cx.strokeStyle = '#3CFD03';
+        cx.arc(10, 10, 5, 0, Math.PI * 2);
+        cx.stroke();
+        $(c).velocity({
+          scaleX: 3,
+          scaleY: 3,
+          opacity: 0
+        }, {
+          duration: 1000,
+          complete: function() {
+            document.body.removeChild(c);
+          }
+        });
+      }
+
+      function startGameClock() {
+        hour = document.querySelector('#time #h');
+        minute = document.querySelector('#time #m');
+        second = document.querySelector('#time #s');
+        h = 0;
+        m = 0;
+        s = 0;
+
+        gameClock = setInterval(function() {
+          second.innerHTML = ('' + s++).padStart(2, '0');;
+
+          if(s == 60) {
+            s = 0;
+            minute.innerHTML = ('' + m++).padStart(2, '0');
+          }
+
+          if(m == 60) {
+            hour.innerHTML = ('' + h++).padStart(2, '0');;
+          }
+        }, 1000);
+      }
+
+      window.onload = function() {
+        var menu = document.querySelector('#menu');
+        menu.style.marginLeft = (innerWidth / 2) - (menu.clientWidth / 2) + 'px';
+      };
+    </script>
+  </body>
+</html>
