@@ -202,12 +202,15 @@
         if (ctx.getImageData(pos.x, pos.y, 1, 1).data[0] != 0) {
           nodes.forEach(function (el, index) {
             var node = {
-              x0: el.x - 5, x1: el.x + 5,
-              y0: el.y - 5, y1: el.y + 5
+              x0: el.x - 15,
+              x1: el.x + 15,
+              y0: el.y - 15,
+              y1: el.y + 15
             };
 
             if (pos.x > node.x0 && pos.x < node.x1 && pos.y > node.y0 && pos.y < node.y1) {
               nodes.splice(index, 1);
+
               if (graphScope) {
                 graphScope.verticesCleared = graphScope.verticesCleared + 1;
                 graphScope.$applyAsync();
@@ -252,6 +255,7 @@
       }
 
       ctx.clearRect(0, 0, innerWidth, innerHeight);
+
       nodes.forEach(function (el) {
         checkNodeIsOutOfBounds(el);
         moveNode(el);
